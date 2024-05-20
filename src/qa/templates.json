@@ -1,0 +1,57 @@
+{
+    "refund": {
+      "category": "refund",
+      "template": "Dear [Customer], we understand that you're requesting a refund. Before we proceed with the refund, would you be open to a discount on your next purchase? If not, we will process your refund promptly. Thank you for your understanding.",
+      "scoring_criteria": {
+        "tone": 10,
+        "process": 10,
+        "empathy": 10
+      }
+    },
+    "order_delay": {
+      "category": "order_delay",
+      "template": "Hello [Customer], we apologize for the delay in delivering your order. We're working hard to get it to you as soon as possible. As a token of our apology, we would like to offer you a [discount/credit]. Thank you for your patience.",
+      "scoring_criteria": {
+        "tone": 10,
+        "process": 10,
+        "empathy": 10
+      }
+    },
+    "product_inquiry": {
+      "category": "product_inquiry",
+      "template": "Hi [Customer], thank you for your interest in our products. Could you please provide more details about the product you're inquiring about? We are here to help and will provide you with all the information you need. Looking forward to assisting you!",
+      "scoring_criteria": {
+        "tone": 10,
+        "process": 10,
+        "empathy": 10
+      }
+    },
+    "shipping_issue": {
+      "category": "shipping_issue",
+      "template": "Dear [Customer], we are sorry to hear about the issues with your shipment. Please provide us with your order number and details of the problem. We will investigate the matter and resolve it as quickly as possible. Thank you for bringing this to our attention.",
+      "scoring_criteria": {
+        "tone": 10,
+        "process": 10,
+        "empathy": 10
+      }
+    },
+    "feedback_request": {
+      "category": "feedback_request",
+      "template": "Hello [Customer], we hope you're enjoying your recent purchase from our store. We would love to hear your feedback on the product and your shopping experience. Your input helps us improve our services and offerings. Thank you for your time!",
+      "scoring_criteria": {
+        "tone": 10,
+        "process": 10,
+        "empathy": 10
+      }
+    },
+    "support": {
+        "category": "support",
+        "template": "Hi [Customer Name], thank you for reaching out to us. How can we assist you today? Please provide us with more details about your issue or question, and we will do our best to help you. We appreciate your patience and understanding.",
+        "scoring_criteria": {
+          "tone": 10,
+          "process": 10,
+          "empathy": 10
+        }
+    }
+  }
+  

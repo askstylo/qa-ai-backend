@@ -11,6 +11,7 @@ const cron = require("node-cron");
 const matchMacros = require("./macros/match");
 const exportFeedbackToCSV = require("./export/csv");
 const exportFeedbackToGoogleSheets = require("./export/googleSheets");
+const classifyAndAnalyzeText = require("./qa/analyzeText");
 
 const app = express();
 app.use(bodyParser.json());
@@ -190,6 +191,21 @@ app.get("/v1/export-feedback", async (req, res) => {
     }
   } catch (err) {
     res.status(500).send("Error exporting feedback");
+  }
+});
+
+app.post("/v1/analyze-text", async (req, res) => {
+  const { text } = req.body;
+
+  if (!text) {
+    return res.status(400).send("Text is required");
+  }
+
+  try {
+    const result = await classifyAndAnalyzeText(text);
+    res.json(result);
+  } catch (error) {
+    res.status(500).send(error.message);
   }
 });
 
