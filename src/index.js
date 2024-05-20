@@ -194,6 +194,7 @@ app.get("/v1/export-feedback", async (req, res) => {
   }
 });
 
+// Endpoint to analyze text and return the category and scores
 app.post("/v1/analyze-text", async (req, res) => {
   const { text } = req.body;
 
@@ -203,7 +204,31 @@ app.post("/v1/analyze-text", async (req, res) => {
 
   try {
     const result = await classifyAndAnalyzeText(text);
-    res.json(result);
+    res.json({
+      category: result.category,
+      scores: result.scores,
+    });
+  } catch (error) {
+    res.status(500).send(error.message);
+  }
+});
+
+// Endpoint to get detailed feedback based on the provided text and category
+app.post("/v1/detailed-feedback", async (req, res) => {
+  const { text, category } = req.body;
+
+  if (!text || !category) {
+    return res.status(400).send("Text and category are required");
+  }
+
+  try {
+    if (!templates[category]) {
+      return res.status(400).send("Invalid category");
+    }
+
+    const template = templates[category].template;
+    const feedback = await getDetailedFeedback(text, template);
+    res.json({ feedback });
   } catch (error) {
     res.status(500).send(error.message);
   }

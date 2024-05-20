@@ -8,15 +8,14 @@ const templates = require("./templates.json"); // Load templates
  */
 async function classifyAndAnalyzeText(text) {
   try {
-    // Step 1: Classify the text into one of the categories\
-
+    // Step 1: Classify the text into one of the categories
     const classificationResponse = await openai.chat.completions.create({
       model: "gpt-4-0613",
       messages: [
         {
           role: "system",
           content:
-            "Classify the following text into one of these categories: refund, support. If you can't determine the category, return 'false'.",
+            "Classify the following text into one of these categories: refund, support, order_delay, product_inquiry, feedback_request, shipping_issue. If you can't determine the category, return 'false'.",
         },
         {
           role: "user",
@@ -55,7 +54,7 @@ async function classifyAndAnalyzeText(text) {
 
     console.log("Classification Result:", classificationResult);
 
-    parsedArguments = JSON.parse(classificationResult.arguments);
+    const parsedArguments = JSON.parse(classificationResult.arguments);
 
     if (
       classificationResult.name === "classify_text" &&
@@ -82,13 +81,45 @@ async function classifyAndAnalyzeText(text) {
             content: text,
           },
         ],
+        functions: [
+          {
+            name: "analyze_text",
+            description: "Analyze the text against the template",
+            parameters: {
+              type: "object",
+              properties: {
+                tone: {
+                  type: "number",
+                  minimum: 0,
+                  maximum: 1,
+                },
+                process: {
+                  type: "number",
+                  minimum: 0,
+                  maximum: 1,
+                },
+                empathy: {
+                  type: "number",
+                  minimum: 0,
+                  maximum: 1,
+                },
+              },
+              required: ["tone", "process", "empathy"],
+            },
+          },
+        ],
+        function_call: { name: "analyze_text" },
       });
 
-      const analysisResult = analysisResponse.choices[0].message.content;
+      const analysisResult =
+        analysisResponse.choices[0].message.function_call;
+      const scores = JSON.parse(analysisResult.arguments);
+      const totalScore = scores.tone + scores.process + scores.empathy;
 
       return {
-        category: category,
-        analysis: analysisResult,
+        category,
+        scores,
+        totalScore,
       };
     } else {
       return { match: false };
@@ -99,4 +130,31 @@ async function classifyAndAnalyzeText(text) {
   }
 }
 
-module.exports = classifyAndAnalyzeText;
+/**
+ * Get detailed feedback based on the provided text and template.
+ * @param {string} text - The text to be analyzed.
+ * @param {string} template - The template to compare against.
+ * @returns {Promise<string>} - The detailed feedback.
+ */
+async function getDetailedFeedback(text, template) {
+  const feedbackResponse = await openai.chat.completions.create({
+    model: "gpt-4-0613",
+    messages: [
+      {
+        role: "system",
+        content: `Provide detailed feedback on the following text based on the template: "${template}". Focus on areas of improvement for tone, process, and empathy.`,
+      },
+      {
+        role: "user",
+        content: text,
+      },
+    ],
+  });
+
+  return feedbackResponse.choices[0].message.content;
+}
+
+module.exports = {
+  classifyAndAnalyzeText,
+  getDetailedFeedback,
+};
