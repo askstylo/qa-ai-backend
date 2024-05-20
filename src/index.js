@@ -1,17 +1,22 @@
 require("dotenv").config();
 const express = require("express");
 const bodyParser = require("body-parser");
-const db = require("../database/db");
-const redisClient = require("./redisClient");
-
-const fetchMacros = require("./macros/fetch");
-const filterMacros = require("./macros/filter");
-const saveMacros = require("./macros/save");
 const cron = require("node-cron");
-const matchMacros = require("./macros/match");
-const exportFeedbackToCSV = require("./export/csv");
-const exportFeedbackToGoogleSheets = require("./export/googleSheets");
-const classifyAndAnalyzeText = require("./qa/analyzeText");
+
+const db = require("../database/db");
+const redisClient = require("./clients/redisClient");
+
+const fetchMacros = require("./macros/fetchMacros");
+const filterMacros = require("./macros/filterMacros");
+const saveMacros = require("./macros/saveMacros");
+const matchMacros = require("./macros/matchMacros");
+
+const exportFeedbackToCSV = require("./export/csvExporter");
+const exportFeedbackToGoogleSheets = require("./export/googleSheetsExporter");
+const {
+  classifyAndAnalyzeText,
+  getDetailedFeedback,
+} = require("./qa/textAnalyzer");
 
 const app = express();
 app.use(bodyParser.json());
@@ -203,7 +208,8 @@ app.post("/v1/analyze-text", async (req, res) => {
   }
 
   try {
-    const result = await classifyAndAnalyzeText(text);
+    const categories = Object.keys(parsedTemplates);
+    const result = await classifyAndAnalyzeText(text, categories);
     res.json({
       category: result.category,
       scores: result.scores,
@@ -231,6 +237,53 @@ app.post("/v1/detailed-feedback", async (req, res) => {
     res.json({ feedback });
   } catch (error) {
     res.status(500).send(error.message);
+  }
+});
+
+app.post("/v1/templates", async (req, res) => {
+  const { category, template } = req.body;
+
+  if (!category || !template) {
+    return res.status(400).send("Category and template are required");
+  }
+
+  try {
+    // Get existing templates from Redis
+    const templates = await redisClient.get("templates");
+    const parsedTemplates = JSON.parse(templates) || {};
+
+    // Add new template
+    parsedTemplates[category] = {
+      category,
+      template,
+      scoring_criteria: {
+        tone: 10,
+        process: 10,
+        empathy: 10,
+      },
+    };
+
+    // Save updated templates to Redis
+    await redisClient.set("templates", JSON.stringify(parsedTemplates));
+
+    // Save new template to database
+    const stmt = db.prepare(
+      `INSERT INTO templates (category, template, scoring_criteria) VALUES (?, ?, ?)`
+    );
+    stmt.run(
+      category,
+      template,
+      JSON.stringify(parsedTemplates[category].scoring_criteria),
+      (err) => {
+        if (err) {
+          return res.status(500).send("Error saving template to database");
+        }
+        res.send("Template submitted successfully");
+      }
+    );
+    stmt.finalize();
+  } catch (error) {
+    res.status(500).send("Error submitting template");
   }
 });
 

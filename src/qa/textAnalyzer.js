@@ -1,12 +1,13 @@
-const openai = require("../openaiClient");
-const templates = require("./templates.json"); // Load templates
+const openai = require("../clients/openaiClient");
+const redisClient = require("../clients/redisClient");
 
 /**
  * Classify the text and analyze it based on the corresponding template.
  * @param {string} text - The text to be analyzed.
+ * @param {array} categories - The dynamic categories to classify the text.
  * @returns {Promise<Object>} - The classification and analysis results.
  */
-async function classifyAndAnalyzeText(text) {
+async function classifyAndAnalyzeText(text, categories) {
   try {
     // Step 1: Classify the text into one of the categories
     const classificationResponse = await openai.chat.completions.create({
@@ -14,8 +15,9 @@ async function classifyAndAnalyzeText(text) {
       messages: [
         {
           role: "system",
-          content:
-            "Classify the following text into one of these categories: refund, support, order_delay, product_inquiry, feedback_request, shipping_issue. If you can't determine the category, return 'false'.",
+          content: `Classify the following text into one of these categories: ${categories.join(
+            ", "
+          )}. If you can't determine the category, return 'false'.`,
         },
         {
           role: "user",
@@ -31,15 +33,7 @@ async function classifyAndAnalyzeText(text) {
             properties: {
               category: {
                 type: "string",
-                enum: [
-                  "refund",
-                  "order_delay",
-                  "product_inquiry",
-                  "support",
-                  "feedback_request",
-                  "shipping_issue",
-                  "false",
-                ],
+                enum: [...categories, "false"],
               },
             },
             required: ["category"],
@@ -52,7 +46,6 @@ async function classifyAndAnalyzeText(text) {
     const classificationResult =
       classificationResponse.choices[0].message.function_call;
 
-    console.log("Classification Result:", classificationResult);
 
     const parsedArguments = JSON.parse(classificationResult.arguments);
 
@@ -62,11 +55,12 @@ async function classifyAndAnalyzeText(text) {
     ) {
       const category = parsedArguments.category;
 
-      if (!templates[category]) {
+      // Get the template from Redis
+      const template = await redisClient.hget("templates", category);
+
+      if (!template) {
         throw new Error("Template for classified category not found");
       }
-
-      const template = templates[category].template;
 
       // Step 2: Analyze the text against the template
       const analysisResponse = await openai.chat.completions.create({
