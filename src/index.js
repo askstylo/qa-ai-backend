@@ -20,7 +20,7 @@ const fetchAndSaveMacros = async () => {
     const macros = await fetchMacros();
     const filteredMacros = filterMacros(macros);
     saveMacros(filteredMacros);
-    redisClient.set("macros", JSON.stringify(filteredMacros));
+    await redisClient.set("macros", JSON.stringify(filteredMacros));
     console.log("Macros fetched and saved successfully");
   } catch (error) {
     console.error("Error fetching or saving macros:", error);
@@ -32,59 +32,79 @@ cron.schedule("0 0 * * *", fetchAndSaveMacros);
 
 fetchAndSaveMacros(); // Run once at startup
 
-// Endpoint to analyze text against macros
-app.post("/analyze", (req, res) => {
+// Endpoint to analyze text against macros and return if a match is found
+app.post("/v1/macro-comparison", async (req, res) => {
   const { text } = req.body;
+  const cachedMacros = await redisClient.get("macros");
+
+  const processMacros = (macros) => {
+    for (let macro of macros) {
+      for (let action of macro.actions) {
+        if (action.field === "comment_value") {
+          const macroValue = action.value;
+          if (matchMacros(macroValue, text)) {
+            return res.json({ match: true, macro });
+          }
+        }
+      }
+    }
+    return res.json({ match: false });
+  };
 
   if (!text) {
     return res.status(400).send("Text is required");
   }
 
   // Fetch macros from Redis cache
-  redisClient.get("macros", (err, data) => {
-    if (err) {
-      return res.status(500).send("Error fetching macros from cache");
-    }
-
-    if (data) {
-      const macros = JSON.parse(data);
-
-      for (let macro of macros) {
-        for (let action of macro.actions) {
-          if (action.field === "comment_value") {
-            const macro = action.value;
-
-            if (matchMacros(macro, text)) {
-              return res.json({ match: true, macro });
-            }
-          }
-        }
+  if (cachedMacros) {
+    const macros = JSON.parse(cachedMacros);
+    return processMacros(macros);
+  } else {
+    db.all("SELECT * FROM macros", [], (err, rows) => {
+      if (err) {
+        return res.status(500).send("Error fetching macros from database");
       }
 
-      return res.json({ match: false });
-    } else {
-      return res.status(500).send("No macros found in cache");
-    }
-  });
+      const macros = rows.map((row) => ({
+        ...row,
+        actions: JSON.parse(row.actions),
+      }));
+
+      // Cache the macros in Redis
+      redisClient.set("macros", JSON.stringify(macros));
+
+      return processMacros(macros);
+    });
+  }
 });
 
-app.get("/macros", (req, res) => {
-  db.all("SELECT * FROM macros", [], (err, rows) => {
-    if (err) {
-      return res.status(500).send("Error fetching macros from database");
-    }
-
-    const macros = rows.map((row) => ({
-      ...row,
-      actions: JSON.parse(row.actions),
-    }));
-
+// Endpoint to list all macros
+app.get("/v1/list-macros", async (req, res) => {
+  const cachedMacros = await redisClient.get("macros");
+  if (cachedMacros) {
+    const macros = JSON.parse(cachedMacros);
     return res.json(macros);
-  });
+  } else {
+    db.all("SELECT * FROM macros", [], (err, rows) => {
+      if (err) {
+        return res.status(500).send("Error fetching macros from database");
+      }
+
+      const macros = rows.map((row) => ({
+        ...row,
+        actions: JSON.parse(row.actions),
+      }));
+
+      // Cache the macros in Redis
+      redisClient.set("macros", JSON.stringify(macros));
+
+      return res.json(macros);
+    });
+  }
 });
 
-// Endpoint to submit feedback
-app.post("/feedback", (req, res) => {
+// Endpoint to submit feedback about a ticket
+app.post("/v1/post-feedback", (req, res) => {
   const {
     ticket_id,
     feedback_type,
@@ -131,7 +151,8 @@ app.post("/feedback", (req, res) => {
   stmt.finalize();
 });
 
-app.get("/export-feedback", async (req, res) => {
+// Endpoint to export feedback
+app.get("/v1/export-feedback", async (req, res) => {
   const { feedback_type, generation_type, start_date, end_date, export_type } =
     req.query;
 
