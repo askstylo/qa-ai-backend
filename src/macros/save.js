@@ -1,4 +1,4 @@
-const db = require('../../database/db');
+const db = require("../../database/db");
 
 /**
  * @typedef Macro
@@ -12,16 +12,26 @@ const db = require('../../database/db');
  */
 
 /**
- * 
+ *
  * @param {Macro[]} macros - An array of Macro objects to be saved into the database.
- *  
+ *
  */
 
 const saveMacros = (macros) => {
-  const stmt = db.prepare(`INSERT INTO macros (id, url, title, active, updated_at, created_at, actions) VALUES (?, ?, ?, ?, ?, ?, ?)`);
+  const stmt = db.prepare(
+    `INSERT INTO macros (id, url, title, active, updated_at, created_at, actions) VALUES (?, ?, ?, ?, ?, ?, ?)`
+  );
 
-  macros.forEach(macro => {
-    stmt.run(macro.id, macro.url, macro.title, macro.active, macro.updated_at, macro.created_at, JSON.stringify(macro.actions));
+  macros.forEach((macro) => {
+    stmt.run(
+      macro.id,
+      macro.url,
+      macro.title,
+      macro.active,
+      macro.updated_at,
+      macro.created_at,
+      JSON.stringify(macro.actions)
+    );
   });
 
   stmt.finalize();

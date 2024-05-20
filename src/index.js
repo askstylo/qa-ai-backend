@@ -2,7 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const bodyParser = require("body-parser");
 const db = require("../database/db");
-const redisClient = require('./redisClient');
+const redisClient = require("./redisClient");
 
 const fetchMacros = require("./macros/fetch");
 const filterMacros = require("./macros/filter");
@@ -20,7 +20,7 @@ const fetchAndSaveMacros = async () => {
     const macros = await fetchMacros();
     const filteredMacros = filterMacros(macros);
     saveMacros(filteredMacros);
-    redisClient.set('macros', JSON.stringify(filteredMacros));
+    redisClient.set("macros", JSON.stringify(filteredMacros));
     console.log("Macros fetched and saved successfully");
   } catch (error) {
     console.error("Error fetching or saving macros:", error);
@@ -33,17 +33,17 @@ cron.schedule("0 0 * * *", fetchAndSaveMacros);
 fetchAndSaveMacros(); // Run once at startup
 
 // Endpoint to analyze text against macros
-app.post('/analyze', (req, res) => {
+app.post("/analyze", (req, res) => {
   const { text } = req.body;
 
   if (!text) {
-    return res.status(400).send('Text is required');
+    return res.status(400).send("Text is required");
   }
 
   // Fetch macros from Redis cache
-  redisClient.get('macros', (err, data) => {
+  redisClient.get("macros", (err, data) => {
     if (err) {
-      return res.status(500).send('Error fetching macros from cache');
+      return res.status(500).send("Error fetching macros from cache");
     }
 
     if (data) {
@@ -51,9 +51,10 @@ app.post('/analyze', (req, res) => {
 
       for (let macro of macros) {
         for (let action of macro.actions) {
-          if (action.field === 'comment_value') {
-            const regex = createRegexFromMacro(action.value);
-            if (regex.test(text)) {
+          if (action.field === "comment_value") {
+            const macro = action.value;
+
+            if (matchMacros(macro, text)) {
               return res.json({ match: true, macro });
             }
           }
@@ -62,7 +63,7 @@ app.post('/analyze', (req, res) => {
 
       return res.json({ match: false });
     } else {
-      return res.status(500).send('No macros found in cache');
+      return res.status(500).send("No macros found in cache");
     }
   });
 });

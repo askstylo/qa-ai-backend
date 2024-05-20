@@ -16,10 +16,9 @@
  */
 
 const filterMacros = (macros) => {
-    return macros.filter(macro => {
-      return macro.actions.some(action => action.field === 'comment_value');
-    });
-  };
-  
-  module.exports = filterMacros;
-  
+  return macros.filter((macro) => {
+    return macro.actions.some((action) => action.field === "comment_value");
+  });
+};
+
+module.exports = filterMacros;
