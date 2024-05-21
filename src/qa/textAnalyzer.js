@@ -56,7 +56,7 @@ async function classifyAndAnalyzeText(text, categories) {
       const category = parsedArguments.category;
 
       // Get the template from Redis
-      const template = await redisClient.hget("templates", category);
+      const template = await redisClient.get("templates", category);
 
       if (!template) {
         throw new Error("Template for classified category not found");

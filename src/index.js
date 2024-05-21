@@ -208,6 +208,8 @@ app.post("/v1/analyze-text", async (req, res) => {
   }
 
   try {
+    const templates = await redisClient.get("templates");
+    const parsedTemplates = JSON.parse(templates);
     const categories = Object.keys(parsedTemplates);
     const result = await classifyAndAnalyzeText(text, categories);
     res.json({
@@ -228,6 +230,8 @@ app.post("/v1/detailed-feedback", async (req, res) => {
   }
 
   try {
+    const templates = await redisClient.get("templates");
+    const parsedTemplates = JSON.parse(templates);
     if (!templates[category]) {
       return res.status(400).send("Invalid category");
     }
