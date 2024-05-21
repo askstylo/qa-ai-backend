@@ -19,7 +19,7 @@ const db = require("../../database/db");
 
 const saveMacros = (macros) => {
   const stmt = db.prepare(
-    `INSERT INTO macros (id, url, title, active, updated_at, created_at, actions) VALUES (?, ?, ?, ?, ?, ?, ?)`
+    `INSERT OR IGNORE INTO macros (id, url, title, active, updated_at, created_at, actions) VALUES (?, ?, ?, ?, ?, ?, ?)`
   );
 
   macros.forEach((macro) => {
